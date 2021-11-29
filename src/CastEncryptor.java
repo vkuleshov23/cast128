@@ -1,4 +1,5 @@
 import java.io.UnsupportedEncodingException;
+import java.io.IOException;
 import java.util.Arrays;
 
 public class CastEncryptor {
@@ -86,7 +87,7 @@ public class CastEncryptor {
     }
 
     //Развертка ключа
-    private static int[] getKey(String key) throws UnsupportedEncodingException {
+    public static int[] getKey(String key) throws UnsupportedEncodingException {
         //byte[] bytekey = key.getBytes("UTF-8"); //создание байтового массива из ключа
         byte[] bytekey = stringToByteArray(key);
         int[] intkey = byteToInt(bytekey); //создание интового массива из ключа
@@ -246,102 +247,31 @@ public class CastEncryptor {
         k[30] = S5[indexK[12]] ^ S6[indexK[13]] ^ S7[indexK[3]] ^ S8[indexK[2]] ^ S7[indexK[8]]; //kr15
         k[31] = S5[indexK[14]] ^ S6[indexK[15]] ^ S7[indexK[1]] ^ S8[indexK[0]] ^ S8[indexK[13]]; //kr16
 
-        System.out.println("KEY: " + Arrays.toString(k) + '\n');
+        // System.out.println("KEY: " + Arrays.toString(k) + '\n');
 
         return k;
     }
 
-    public static byte[] encoding(String data, String keyHex) throws UnsupportedEncodingException {
+    public static byte[] encoding(String data, int[] k) throws UnsupportedEncodingException, IOException {
         byte[] dataByte = stringToByteArray(data);
-        return encoding(dataByte, keyHex);
+        return encoding(dataByte, k);
     }
 
-    //Алгоритм шифрования
-    public static byte[] encoding(byte[] data, String keyHex) throws UnsupportedEncodingException {
-
-        //Преобразования ключа
-        int[] km = new int[16];
-        int[] kr = new int[16];
-        int[] k; //резерв под ключ
-
-        k = getKey(keyHex); //раскрываем ключ
-        for (int i=0; i<16; i++) { //делим ключ на две части
-            km[i] = k[i];
-            kr[i] = k[i+16];
-        }
-
-        //дополнение до 64-битовых блоков
-        byte[] bytetext = new byte[data.length + (8 - data.length % 8) % 8]; //Удлиняем массив до 64*n бит
-        System.arraycopy(data, 0, bytetext, 0, data.length); //Заполняем с начала (обрезать пробелы в конце будем при дешифровке)
-
-        System.out.println("byteTEXT: " + Arrays.toString(bytetext) + '\n');
-        //преобразовали текст в int
-        int[] inttext = byteToInt(bytetext);
-        System.out.println("IntTEXT: " + Arrays.toString(inttext) + '\n');
-
-        //Преобразовали в массив L и R int текст
-        int[] L = new int[inttext.length / 2];
-        int[] R = new int[inttext.length / 2];
-        int[] L_ = new int[inttext.length / 2];
-        int[] R_ = new int[inttext.length / 2];
-        for (int i = 0; i < inttext.length / 2; i++) {
-            L[i] = inttext[2 * i];
-            R[i] = inttext[2 * i + 1];
-            L_[i] = inttext[2 * i];
-            R_[i] = inttext[2 * i + 1];
-        }
-
-        //Раунды
-        int I;
-        int F;
-        short[] Iindex;
-        for (int i = 0; i < 16; i++) {
-            for (int j = 0; j < L_.length; j++) {
-                if ((i + 1) % 3 == 1) { //round 1,4,7,10,13,16
-                    I = cl(pl(km[i], R_[j]), kr[i]); //I = ((Kmi + Ri-1) <<< Kri)
-                    Iindex = byteToIndex(intToByte(I));
-                    F = pl(mi(S1[Iindex[0]] ^ S2[Iindex[1]], S3[Iindex[2]]), S4[Iindex[3]]); //F = ((S1[Ia] ^ S2[Ib]) – (S3[Ic])) + S4[Id]
-                } else if ((i + 1) % 3 == 2) { //round 2,5,8,11,14
-                    I = cl(km[i] ^ R_[j], kr[i]); //I = ((Kmi ^ Ri-1) <<< Kri)
-                    Iindex = byteToIndex(intToByte(I));
-                    F = pl(mi(S1[Iindex[0]], S2[Iindex[1]]), S3[Iindex[2]]) ^ S4[Iindex[3]]; //F = ((S1[Ia] - S2[Ib]) + (S3[Ic])) ^ S4[Id]
-                } else { //round 3,6,9,12,15
-                    I = cl(mi(km[i], R_[j]), kr[i]); //I = ((Kmi - Ri-1) <<< Kri)
-                    Iindex = byteToIndex(intToByte(I));
-                    F = mi(pl(S1[Iindex[0]], S2[Iindex[1]]) ^ S3[Iindex[2]], S4[Iindex[3]]); //F = ((S1[Ia] + S2[Ib]) ^ (S3[Ic])) - S4[Id]
-                }
-                R[j] = R_[j];
-                L[j] = L_[j] ^ F;
-                L_[j] = L[j];
-                R_[j] = R[j];
-                if (i != 15) { //Меняем местами
-                    L[j] = R_[j]; //Правый идет влево
-                    R[j] = L_[j]; //Левый преобразуется и идет вправо
-                    L_[j] = L[j];
-                    R_[j] = R[j];
-                }
-            }
-        }
-
-        //Преобразование в сплошной массив для хранения
-        int[] LR = new int[L.length*2];
-        for (int i = 0; i < L.length; i++) {
-            LR[2*i] = L[i];
-            LR[2*i+1] = R[i];
-        }
-        // return LR;
-        return intMassToByte(LR);
-    }
 
     //Алгоритм дешифрования
-    public static String decoding(byte[] data, String keyHex) throws UnsupportedEncodingException {
+    public static String decoding(byte[] data, int[] k) throws UnsupportedEncodingException, IOException {
+        
+        if(data.length > 8) {
+            throw new IOException("incorrect block size");
+        }
+
         //Преобразования ключа
         int[] km = new int[16];
         int[] kr = new int[16];
-        int[] k; //резерв под ключ, его можно запоминать на устройстве
+        // int[] k; //резерв под ключ, его можно запоминать на устройстве
 
         String key = "";//keyGen(player1, player2); //генерация ключа на основе полученной информации
-        k = getKey(keyHex); //раскрываем ключ
+        // k = getKey(keyHex); //раскрываем ключ
         for (int i=0; i<16; i++) { //делим ключ на две части
             km[i] = k[i];
             kr[i] = k[i+16];
@@ -350,55 +280,45 @@ public class CastEncryptor {
         int[] LR = byteToInt(data);
 
         //Получаем L, R из общего массива данных
-        int[] L = new int[LR.length/2];
-        int[] R = new int[LR.length/2];
-        int[] L_ = new int[LR.length/2];
-        int[] R_ = new int[LR.length/2];
-        for (int i=0; i<LR.length/2; i++) {
-            L[i] = LR[2*i];
-            R[i] = LR[2*i+1];
-            L_[i] = LR[2*i];
-            R_[i] = LR[2*i+1];
-        }
+        int L = LR[1];
+        int R = LR[0];
+        int L_ = LR[1];
+        int R_ = LR[0];
 
         //Раунды
         int I;
         int F;
         short[] Iindex;
         for (int i = 15; i >= 0; i--) {
-            for (int j=0; j<L_.length; j++) {
                 if ((i+1) % 3 == 1) { //round 1
-                    I = cl(pl(km[i], R_[j]), kr[i]); //I = ((Kmi + Ri-1) <<< Kri)
+                    I = cl(pl(km[i], R_), kr[i]); //I = ((Kmi + Ri-1) <<< Kri)
                     Iindex = byteToIndex(intToByte(I));
                     F = pl(mi(S1[Iindex[0]] ^ S2[Iindex[1]], S3[Iindex[2]]), S4[Iindex[3]]); //F = ((S1[Ia] ^ S2[Ib]) – (S3[Ic])) + S4[Id]
                 } else if ((i+1) % 3 == 2) { //round 2
-                    I = cl(km[i] ^ R_[j], kr[i]); //I = ((Kmi ^ Ri-1) <<< Kri)
+                    I = cl(km[i] ^ R_, kr[i]); //I = ((Kmi ^ Ri-1) <<< Kri)
                     Iindex = byteToIndex(intToByte(I));
                     F = pl(mi(S1[Iindex[0]], S2[Iindex[1]]), S3[Iindex[2]]) ^ S4[Iindex[3]]; //F = ((S1[Ia] - S2[Ib]) + (S3[Ic])) ^ S4[Id]
                 } else { //round 3
-                    I = cl(mi(km[i], R_[j]), kr[i]); //I = ((Kmi - Ri-1) <<< Kri)
+                    I = cl(mi(km[i], R_), kr[i]); //I = ((Kmi - Ri-1) <<< Kri)
                     Iindex = byteToIndex(intToByte(I));
                     F = mi(pl(S1[Iindex[0]], S2[Iindex[1]]) ^ S3[Iindex[2]], S4[Iindex[3]]); //F = ((S1[Ia] + S2[Ib]) ^ (S3[Ic])) - S4[Id]
                 }
-                R[j] = R_[j];
-                L[j] = L_[j] ^ F;
-                L_[j] = L[j];
-                R_[j] = R[j];
+                R = R_;
+                L = L_ ^ F;
+                L_ = L;
+                R_ = R;
                 if (i != 0) {
-                    L[j] = R_[j]; //Правый идет влево
-                    R[j] = L_[j]; //Левый преобразуется и идет вправо
-                    L_[j] = L[j];
-                    R_[j] = R[j];
+                    L = R_; //Правый идет влево
+                    R = L_; //Левый преобразуется и идет вправо
+                    L_ = L;
+                    R_ = R;
                 }
-            }
         }
 
         //Перевод в текст
-        int[] TXTint = new int[L.length*2];
-        for (int i = 0; i < L.length; i++) {
-            TXTint[2*i] = L[i];
-            TXTint[2*i+1] = R[i];
-        }
+        int[] TXTint = new int[2];
+            TXTint[0] = L;
+            TXTint[1] = R;
         return byteMassToString(intMassToByte(TXTint));
     }
 
@@ -414,5 +334,76 @@ public class CastEncryptor {
 
     public static String byteMassToString(byte[] TXTbyte) throws UnsupportedEncodingException {
         return new String(TXTbyte, "UTF-8");   
+    }
+
+
+
+    public static byte[] encoding(byte[] data, int[] k) throws UnsupportedEncodingException, IOException {
+
+        if(data.length > 8) {
+            throw new IOException("incorrect block size");
+        }
+
+        //Преобразования ключа
+        int[] km = new int[16];
+        int[] kr = new int[16];
+        // int[] k; //резерв под ключ
+
+        // k = getKey(keyHex); //раскрываем ключ
+        for (int i=0; i<16; i++) { //делим ключ на две части
+            km[i] = k[i];
+            kr[i] = k[i+16];
+        }
+        
+        byte[] bytetext = new byte[data.length + (8 - data.length % 8) % 8]; //Удлиняем массив до 64*n бит
+        System.arraycopy(data, 0, bytetext, 0, data.length); //Заполняем с начала (обрезать пробелы в конце будем при дешифровке)
+
+        //преобразовали текст в int
+        // System.out.println("ByteTEXT: " + Arrays.toString(bytetext) + '\n');
+        int[] inttext = byteToInt(bytetext);
+        // System.out.println("IntTEXT: " + Arrays.toString(inttext) + '\n');
+
+        int L = inttext[0];
+        int R = inttext[1];
+        int L_ = L;
+        int R_ = R;
+
+        //Раунды
+        int I;
+        int F;
+        short[] Iindex;
+        for (int i = 0; i < 16; i++) {
+            if ((i + 1) % 3 == 1) { //round 1,4,7,10,13,16
+                I = cl(pl(km[i], R_), kr[i]); //I = ((Kmi + Ri-1) <<< Kri)
+                Iindex = byteToIndex(intToByte(I));
+                F = pl(mi(S1[Iindex[0]] ^ S2[Iindex[1]], S3[Iindex[2]]), S4[Iindex[3]]); //F = ((S1[Ia] ^ S2[Ib]) – (S3[Ic])) + S4[Id]
+            } else if ((i + 1) % 3 == 2) { //round 2,5,8,11,14
+                I = cl(km[i] ^ R_, kr[i]); //I = ((Kmi ^ Ri-1) <<< Kri)
+                Iindex = byteToIndex(intToByte(I));
+                F = pl(mi(S1[Iindex[0]], S2[Iindex[1]]), S3[Iindex[2]]) ^ S4[Iindex[3]]; //F = ((S1[Ia] - S2[Ib]) + (S3[Ic])) ^ S4[Id]
+            } else { //round 3,6,9,12,15
+                I = cl(mi(km[i], R_), kr[i]); //I = ((Kmi - Ri-1) <<< Kri)
+                Iindex = byteToIndex(intToByte(I));
+                F = mi(pl(S1[Iindex[0]], S2[Iindex[1]]) ^ S3[Iindex[2]], S4[Iindex[3]]); //F = ((S1[Ia] + S2[Ib]) ^ (S3[Ic])) - S4[Id]
+            }
+            R = R_;
+            L = L_ ^ F;
+            L_ = L;
+            R_ = R;
+            if (i != 15) { //Меняем местами
+                L = R_; //Правый идет влево
+                R = L_; //Левый преобразуется и идет вправо
+                R_ = R;
+                L_ = L;
+            }
+        }
+
+        //Преобразование в сплошной массив для хранения
+        int[] LR = new int[2];
+        LR[1] = L;
+        LR[0] = R;
+        // System.out.println("IntTEXT: " + Arrays.toString(LR) + '\n');
+        // return LR;
+        return intMassToByte(LR);
     }
 }
