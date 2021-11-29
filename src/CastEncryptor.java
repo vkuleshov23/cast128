@@ -78,7 +78,7 @@ public class CastEncryptor {
         return (int) c;
     }
 
-    private static byte[] stringToByteArray(String string) {
+    public static byte[] stringToByteArray(String string) {
         byte[] bytekey = new byte[string.length()];
         for (int i = 0; i < string.length(); i++) {
             bytekey[i] = (byte)(string.charAt(i));
@@ -259,7 +259,7 @@ public class CastEncryptor {
 
 
     //Алгоритм дешифрования
-    public static String decoding(byte[] data, int[] k) throws UnsupportedEncodingException, IOException {
+    public static byte[] decoding(byte[] data, int[] k) throws UnsupportedEncodingException, IOException {
         
         if(data.length > 8) {
             throw new IOException("incorrect block size");
@@ -317,15 +317,20 @@ public class CastEncryptor {
 
         //Перевод в текст
         int[] TXTint = new int[2];
-            TXTint[0] = L;
-            TXTint[1] = R;
-        return byteMassToString(intMassToByte(TXTint));
+        TXTint[0] = L;
+        TXTint[1] = R;
+
+        byte[] result = intMassToByte(TXTint);
+        // System.out.println("DECODE IntTEXT: " + Arrays.toString(TXTint) + '\n');
+        // System.out.println("DECODE IntTEXT: " + Arrays.toString(result) + '\n');
+
+        return result;
     }
 
 
     public static byte[] intMassToByte(int[] TXTint) throws UnsupportedEncodingException {
         byte[] TXTbyte = new byte[TXTint.length * 4];
-        for (int i = 0; i<TXTint.length; i++) {
+        for (int i = 0; i < TXTint.length; i++) {
             System.arraycopy(intToByte(TXTint[i]), 0, TXTbyte, 4*i, 4);
         }
         return TXTbyte;
@@ -402,8 +407,10 @@ public class CastEncryptor {
         int[] LR = new int[2];
         LR[1] = L;
         LR[0] = R;
-        // System.out.println("IntTEXT: " + Arrays.toString(LR) + '\n');
+        byte[] result = intMassToByte(LR);
+        // System.out.println("ENCODE IntTEXT: " + Arrays.toString(LR) + '\n');
+        // System.out.println("ENCODE IntTEXT: " + Arrays.toString(result) + '\n');
         // return LR;
-        return intMassToByte(LR);
+        return result;
     }
 }
