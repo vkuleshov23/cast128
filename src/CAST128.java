@@ -8,32 +8,68 @@ import java.util.stream.Stream;
 import java.io.*;
 
 public class CAST128 {
-	public static byte[] encryption(byte[] byteData, String key) throws UnsupportedEncodingException, IOException {
+
+	private static byte[] xor(byte[] a, byte[] b) {
+		byte[] result = new byte[a.length];
+		for(int i = 0; i < a.length; i++) {
+			result[i] = (byte)(a[i] ^ b[i]);
+		}
+		return result;
+	}
+
+	public static byte[] encryption(byte[] byteData, String key, int[] iv) throws UnsupportedEncodingException, IOException {
 		
 		int[] k = CastEncryptor.getKey(key);
-
 		byteData = Arrays.copyOf(byteData, byteData.length + ((byteData.length%8 == 0) ? 0 : (8-byteData.length%8)) );
+        byte[] bIV = CastEncryptor.intMassToByte(iv);
+       	// System.out.println("IV Block:\n" + Arrays.toString(bIV));
 
 		for(int i = 0; i < byteData.length; i+=8) {
-			byte[] block = Arrays.copyOfRange(byteData, i, i+8);
-        	
-        	block = CastEncryptor.encoding(block, k);
+
+			byte[] chipedIV = CastEncryptor.encoding(bIV, k);
+			byte[] openBlock = Arrays.copyOfRange(byteData, i, i+8);
+        
+        	bIV = xor(openBlock, chipedIV);
+
+        	// System.out.println("CHIPEDIV Block:\n" + Arrays.toString(chipedIV));
+        	// System.out.println("OPEN Block:\n" + Arrays.toString(openBlock));
+        	// System.out.println("CHIPED Block:\n" + Arrays.toString(bIV));
 			
-			fill(block, byteData, i, i+8);
+			fill(bIV, byteData, i, i+8);
 		}
 		return byteData;
 	}
 
-	public static byte[] decryption(byte[] byteData, String key) throws UnsupportedEncodingException, IOException {
+	public static byte[] decryption(byte[] byteData, String key, int[] iv) throws UnsupportedEncodingException, IOException {
 		
 		int[] k = CastEncryptor.getKey(key);
 		byte[] res = new byte[byteData.length];
-		
-		for(int i = 0; i < byteData.length; i+=8) {
-			byte[] block = Arrays.copyOfRange(byteData, i, i+8);
-        	fill(CastEncryptor.decoding(block, k), res, i, i+8);
+        byte[] bIV = CastEncryptor.intMassToByte(iv);
+       	// System.out.println(byteData.length + "\nIV Block:\n" + Arrays.toString(bIV));
 
+		byte[] chipedClosedBlock = Arrays.copyOfRange(byteData, byteData.length-8, byteData.length);
+        
+		
+		for(int i = byteData.length-8; i > 0 ; i-=8) {
+
+    	    // System.out.println("CHIPED Block:\n" + Arrays.toString(chipedClosedBlock));
+			byte[] closedBlock = Arrays.copyOfRange(byteData, i-8, i);
+
+        	// System.out.println("CHIPEDIV Block BEFORE:\n" + Arrays.toString(closedBlock));
+        	byte[] chipedIV  = CastEncryptor.encoding(closedBlock, k);
+        	// System.out.println("CHIPEDIV Block:\n" + Arrays.toString(chipedIV));
+			byte[] openBlock = xor(chipedClosedBlock, chipedIV);
+        	fill(openBlock, res, i, i+8);
+
+			chipedClosedBlock = closedBlock;
+        	// System.out.println("OPEN Block:\n" + Arrays.toString(openBlock));
 		}
+		byte[] chipedIV = CastEncryptor.encoding(bIV, k);
+       	// System.out.println("CHIPEDIV Block:\n" + Arrays.toString(chipedIV));
+		byte[] openBlock = xor(chipedClosedBlock, CastEncryptor.encoding(bIV,k));
+        // System.out.println("CHIPED Block:\n" + Arrays.toString(chipedClosedBlock));
+    	// System.out.println("OPEN Block:\n" + Arrays.toString(openBlock));
+		fill(openBlock, res, 0, 8);
 		return res;
 	}
 
@@ -43,40 +79,36 @@ public class CAST128 {
 		}
 	}
 
-	public static byte[] encryptionImage(String srcImage, String dstImage, String key) throws UnsupportedEncodingException, IOException {
+	public static byte[] encryptionImage(String srcImage, String dstImage, String key, int[] iv) throws UnsupportedEncodingException, IOException {
 		Image img = new Image();
         byte[] data = img.readImage(srcImage);
-        System.out.println("data.length: " + data.length);
-        data = encryption(data, key);
-        System.out.println("data.length: " + data.length);
+        data = encryption(data, key, iv);
         img.writeImage(dstImage, data);
         return data;
 	}
 
-	public static byte[] decryptionImage(String srcImage, String dstImage, String key) throws UnsupportedEncodingException, IOException {
+	public static byte[] decryptionImage(String srcImage, String dstImage, String key, int[] iv) throws UnsupportedEncodingException, IOException {
 		Image img = new Image();
         byte[] data = img.readImage(srcImage);
-        System.out.println("data.length: " + data.length);
-        data = decryption(data, key);
-        System.out.println("data.length: " + data.length);
+        data = decryption(data, key, iv);
         img.writeImage(dstImage, data);
         return data;
 	}
 
 	@SuppressWarnings("unchecked")
-	public static byte[] encryptionFile(String readFile, String writeFile, String key) throws UnsupportedEncodingException, IOException {
+	public static byte[] encryptionFile(String readFile, String writeFile, String key, int[] iv) throws UnsupportedEncodingException, IOException {
 
 		byte[] data = readFile(readFile);
-		data = encryption(data, key);
+		data = encryption(data, key, iv);
 		writeToFile(writeFile, data, false);
 
 		return data;
 	}
 
-	public static byte[] decryptionFile(String readFile, String writeFile, String key) throws UnsupportedEncodingException, IOException {
+	public static byte[] decryptionFile(String readFile, String writeFile, String key, int[] iv) throws UnsupportedEncodingException, IOException {
 
         byte[] datasrc = readFile(readFile);
-        byte[] data = decryption(datasrc, key);
+        byte[] data = decryption(datasrc, key, iv);
 		writeToFile(writeFile, data, true);
 
 		return data;

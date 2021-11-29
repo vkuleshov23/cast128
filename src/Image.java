@@ -23,7 +23,7 @@ public class Image {
         int height = img.getHeight();
         int bpp = getBitsPerPixel(img);
 
-        System.out.println("Input image size: " + width + " x " + height + " (bpp = " + bpp + ")\n");
+        // System.out.println("Input image size: " + width + " x " + height + " (bpp = " + bpp + ")\n");
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageIO.write(img, "bmp", baos);
@@ -31,7 +31,7 @@ public class Image {
         byte[] imageInByte = baos.toByteArray();
         baos.close();
 
-        System.out.println("imageInByte.length = " + imageInByte.length + "     image size = " + width * height * bpp);
+        // System.out.println("imageInByte.length = " + imageInByte.length + "     image size = " + width * height * bpp);
         this.image = imageInByte;
         this.headLength = imageInByte.length - (width * height * bpp);
         byte[] noHeadImage = this.cutHead();
@@ -49,7 +49,7 @@ public class Image {
         for(int i = headLength, j = 0; i < imageNoHead.length; i++, j++) {
             imageNoHead[j] = image[i];
         }
-        System.out.println("newImage size: " + imageNoHead.length);
+        // System.out.println("newImage size: " + imageNoHead.length);
         return imageNoHead;
     }
 
@@ -60,11 +60,10 @@ public class Image {
     }
 
     private void addHead(byte[] img) {
-        System.out.println("img.length: " + img.length);
         for(int i = headLength, j = 0; i < img.length; i++, j++) {
             this.image[i] = img[j];
         }
-        System.out.println("end");
+        // System.out.println("end");
     }
 
     public int getBitsPerPixel(BufferedImage img) {

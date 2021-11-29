@@ -14,7 +14,7 @@ public class CastEncryptor {
     private static final int[] S8 = sBlockToInt("e216300dbbddfffca7ebdabd356480957789f8b7e6c1121b0e241600052ce8b511a9cfb0e5952f11ece7990a9386d1742a42931c76e38111b12def3a37ddddfcde9adeb10a0cc32cbe19702984a00940bb243a0fb4d137cfb44e79f0049eedfd0b15a15d480d31688bbbde5a669ded42c7ece8313f8f95e772df191b7580330d940742515c7dcdfaabbe6d63aa402164b301d40a02e7d1ca53571dae7a3182a212a8ddecfdaa335d176f43e871fb46d438129022ce949ad4b84769ad965bd86282f3d05566fb976715b80b4e1d5b47a04cfde06fc28ec4b857e8726e647a78fc99865d44608bd5936c200e0339dc5ff65d0b00a3ae63aff27e8bd63270108c0cbbd350492998df04980cf42a9b6df4919e7edd530691854858cb7e073b74ef2e522fffb1d24708cc1c7e27cda4eb215b3cf1d2e219b47a38424f7618358560399d17dee727eb35e6c9aff67b36baf5b809c467cdc18910b1e11dbf7b06cd1af87170c6082d5e3354d4de495a64c6d006bcc0c62c3dd00db3708f8f3477d51b42264f620f24b8d2bf15c1b79e46a52564f8d7e54e3e3781607895cda5859c15a5e6459788c37bc75fdb07ba0c0676a3ab7f229b1e31842e7b24259fd7f8bef472835ffcb86df4c1f296f5b195fd0af0fcb0fe134ce2506d3d4f9b12eaf215f225a223736f9fb4c42825d0497934c713f8c4618187ea7a6e987cd16efc1436876cf1544107bedeee1456e9af27a04aa4413cf7c89992ecbae6dd67016d151682eba842eedffdba60b4f1907b7520e3030f24d8c29ee139673befa63fb871873054b6f2cf3b9f326442cb15a4ccb01a4504f1e47d8d844a1be5bae7dfdc42cbda70cd7dae0a57e85b7ad53f5af620cf4d8ccea4d42879d130a43486ebfb33d3cddc77853b5337effcb5c5068778e580b3e64e68b8f4c5c8b37e0d809ea2398feb7c132a4f9443b7950e2fee7d1c223613bddd06caa237df932bc4248289acf3ebc35715f6b7ef3478ddf267616fc148cbe49052815e5e410fabb48a24652eda7fa4e87b40e4e98ea0845889e9e1efd390fcdd07d35bdb48569438d7e5b257720101730edebc5b64311394917e4f503c2fba646f12827523d24ae0779695f9c17a8f7a5b2121d187b89629263a4dba510cdf81f47c9fad1163edea7b59651a00726e1140309200da6d774a0cdd61ad1f4603605bdfb09eedc36422ebe6a8cee7d28aa0e736a05564a6b910853209c7eb8f372de705ca8951570fdf09822bbd691a6caa12e4f287451c0fe0f6a27a3ada48194cf1764f0d771c2b67cdb156350d83845938fa0f42399ef336997b070e84093d4aa93e618360d87b1fa98b0c1149382ce97625a50614d1b70e25244b0c768347589e8d820d2059d1a466bb1ef8da0a8204f19130ba6e4ec0992651641ee7230d50b2ad80eaee68018db2a283ea8bf59e");
 
     //функция перевода массива 4*X byte в массив X int
-    private static int[] byteToInt(byte[] b) {
+    public static int[] byteToInt(byte[] b) {
         int[] inte = new int[b.length / 4];
         for (int i = 0; i < b.length / 4; i++) {
             inte[i] = ((b[4*i] & 0xFF) << 24) ^ ((b[4*i+1] & 0xFF) << 16) ^ ((b[4*i+2] & 0xFF) << 8) ^ (b[4*i+3] & 0xFF);
@@ -22,8 +22,16 @@ public class CastEncryptor {
         return inte;
     }
 
+    public static byte[] intMassToByte(int[] TXTint) throws UnsupportedEncodingException {
+        byte[] TXTbyte = new byte[TXTint.length * 4];
+        for (int i = 0; i < TXTint.length; i++) {
+            System.arraycopy(intToByte(TXTint[i]), 0, TXTbyte, 4*i, 4);
+        }
+        return TXTbyte;
+    }
+
     //функция перевода 1 int в массив 4 byte
-    private static byte[] intToByte(int value) {
+    public static byte[] intToByte(int value) {
         return new byte[] {
                 (byte)(value >>> 24),
                 (byte)(value >>> 16),
@@ -325,16 +333,6 @@ public class CastEncryptor {
         // System.out.println("DECODE IntTEXT: " + Arrays.toString(result) + '\n');
 
         return result;
-    }
-
-
-    public static byte[] intMassToByte(int[] TXTint) throws UnsupportedEncodingException {
-        byte[] TXTbyte = new byte[TXTint.length * 4];
-        for (int i = 0; i < TXTint.length; i++) {
-            System.arraycopy(intToByte(TXTint[i]), 0, TXTbyte, 4*i, 4);
-        }
-        return TXTbyte;
-        // return new String(TXTbyte, "UTF-8");   
     }
 
     public static String byteMassToString(byte[] TXTbyte) throws UnsupportedEncodingException {
