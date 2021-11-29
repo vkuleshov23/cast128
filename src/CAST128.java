@@ -17,24 +17,21 @@ public class CAST128 {
 		return result;
 	}
 
+	private static byte[] cfb(byte[] iv, byte[] openBlock, int[] k) throws UnsupportedEncodingException, IOException {
+		byte[] chipedIV = CastEncryptor.encoding(iv, k);
+		return xor(openBlock, chipedIV);
+	}
+
 	public static byte[] encryption(byte[] byteData, String key, int[] iv) throws UnsupportedEncodingException, IOException {
 		
 		int[] k = CastEncryptor.getKey(key);
 		byteData = Arrays.copyOf(byteData, byteData.length + ((byteData.length%8 == 0) ? 0 : (8-byteData.length%8)) );
-        byte[] bIV = CastEncryptor.intMassToByte(iv);
-       	// System.out.println("IV Block:\n" + Arrays.toString(bIV));
+		byte[] bIV = CastEncryptor.intMassToByte(iv);
 
 		for(int i = 0; i < byteData.length; i+=8) {
 
-			byte[] chipedIV = CastEncryptor.encoding(bIV, k);
-			byte[] openBlock = Arrays.copyOfRange(byteData, i, i+8);
-        
-        	bIV = xor(openBlock, chipedIV);
-
-        	// System.out.println("CHIPEDIV Block:\n" + Arrays.toString(chipedIV));
-        	// System.out.println("OPEN Block:\n" + Arrays.toString(openBlock));
-        	// System.out.println("CHIPED Block:\n" + Arrays.toString(bIV));
-			
+			byte[] openBlock = Arrays.copyOfRange(byteData, i, i+8);        
+			bIV = cfb(bIV, openBlock, k);
 			fill(bIV, byteData, i, i+8);
 		}
 		return byteData;
@@ -43,34 +40,15 @@ public class CAST128 {
 	public static byte[] decryption(byte[] byteData, String key, int[] iv) throws UnsupportedEncodingException, IOException {
 		
 		int[] k = CastEncryptor.getKey(key);
-		byte[] res = new byte[byteData.length];
-        byte[] bIV = CastEncryptor.intMassToByte(iv);
-       	// System.out.println(byteData.length + "\nIV Block:\n" + Arrays.toString(bIV));
+		byte[] bIV = CastEncryptor.intMassToByte(iv);
 
-		byte[] chipedClosedBlock = Arrays.copyOfRange(byteData, byteData.length-8, byteData.length);
-        
-		
-		for(int i = byteData.length-8; i > 0 ; i-=8) {
+		for(int i = 0; i < byteData.length; i+=8) {
 
-    	    // System.out.println("CHIPED Block:\n" + Arrays.toString(chipedClosedBlock));
-			byte[] closedBlock = Arrays.copyOfRange(byteData, i-8, i);
-
-        	// System.out.println("CHIPEDIV Block BEFORE:\n" + Arrays.toString(closedBlock));
-        	byte[] chipedIV  = CastEncryptor.encoding(closedBlock, k);
-        	// System.out.println("CHIPEDIV Block:\n" + Arrays.toString(chipedIV));
-			byte[] openBlock = xor(chipedClosedBlock, chipedIV);
-        	fill(openBlock, res, i, i+8);
-
-			chipedClosedBlock = closedBlock;
-        	// System.out.println("OPEN Block:\n" + Arrays.toString(openBlock));
+			byte[] closedBlock = Arrays.copyOfRange(byteData, i, i+8);        
+			fill(cfb(bIV, closedBlock, k), byteData, i, i+8);
+			bIV = closedBlock;
 		}
-		byte[] chipedIV = CastEncryptor.encoding(bIV, k);
-       	// System.out.println("CHIPEDIV Block:\n" + Arrays.toString(chipedIV));
-		byte[] openBlock = xor(chipedClosedBlock, CastEncryptor.encoding(bIV,k));
-        // System.out.println("CHIPED Block:\n" + Arrays.toString(chipedClosedBlock));
-    	// System.out.println("OPEN Block:\n" + Arrays.toString(openBlock));
-		fill(openBlock, res, 0, 8);
-		return res;
+		return byteData;
 	}
 
 	public static void fill(byte[] src, byte[] dst, int from, int to) {
